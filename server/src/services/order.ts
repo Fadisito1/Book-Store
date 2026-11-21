@@ -41,18 +41,11 @@ export async function createCalculatedOrder(userId: string, items: OrderItemInpu
           quantity: item.quantity
         });
         total += price * item.quantity;
-
-        const updated = await Book.updateOne(
-          { _id: book._id, stock: { $gte: item.quantity } },
-          { $inc: { stock: -item.quantity } },
-          { session }
-        );
-        if (updated.modifiedCount !== 1) throw new AppError(409, "El stock cambió; intenta nuevamente");
       }
 
       const order = await Order.create([{ user: userId, items: snapshots, total, shippingStatus: "Pendiente", trackingNumber: "" }], { session });
       createdOrderId = order[0]._id;
-      await Payment.create([{ order: createdOrderId, provider: "paypal", status: "pendiente", amount: total, currency: "USD" }], { session });
+      await Payment.create([{ order: createdOrderId, provider: "paypal", status: "PENDING", amount: total, currency: "USD" }], { session });
     });
 
     if (!createdOrderId) throw new AppError(500, "No se pudo crear el pedido");

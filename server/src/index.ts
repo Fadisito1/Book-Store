@@ -14,13 +14,16 @@ const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:3000";
 const app = createApp();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: CLIENT_ORIGIN, credentials: true } });
+app.locals.io = io;
 
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
   if (!token) return next(new Error("Token requerido"));
   if (!process.env.JWT_SECRET) return next(new Error("Configuración JWT incompleta"));
   try {
-    jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, process.env.JWT_SECRET) as jwt.JwtPayload & { role: "cliente" | "admin" };
+    socket.data.userId = payload.sub;
+    socket.data.role = payload.role;
     next();
   } catch {
     next(new Error("Token inválido"));
@@ -28,6 +31,8 @@ io.use((socket, next) => {
 });
 
 io.on("connection", (socket) => {
+  if (socket.data.role === "admin") socket.join("admin");
+  if (socket.data.userId) socket.join(`user:${socket.data.userId}`);
   console.log("socket autenticado conectado", socket.id);
 });
 

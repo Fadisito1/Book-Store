@@ -15,6 +15,8 @@ const orderSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     items: { type: [orderItemSchema], required: true, validate: [(items: unknown[]) => items.length > 0, "El pedido debe tener productos"] },
     total: { type: Number, required: true, min: 0 },
+    paymentStatus: { type: String, enum: ["pendiente", "pagado"], default: "pendiente", required: true },
+    paidAt: { type: Date, default: null },
     shippingStatus: {
       type: String,
       enum: ["Pendiente", "Procesando", "Enviado", "Entregado"],

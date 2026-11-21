@@ -4,6 +4,7 @@ import helmet from "helmet";
 import { authRouter } from "./routes/auth";
 import { booksRouter } from "./routes/books";
 import { ordersRouter } from "./routes/orders";
+import { paymentsRouter } from "./routes/payments";
 import { errorHandler, notFound } from "./middleware/errors";
 
 export function createApp() {
@@ -18,6 +19,7 @@ export function createApp() {
   app.use("/api/auth", authRouter);
   app.use("/api/books", booksRouter);
   app.use("/api/orders", ordersRouter);
+  app.use("/api/payments", paymentsRouter);
 
   app.use(notFound);
   app.use(errorHandler);
