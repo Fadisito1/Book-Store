@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { authRouter } from "./routes/auth";
+import { booksRouter } from "./routes/books";
+import { ordersRouter } from "./routes/orders";
 import { errorHandler, notFound } from "./middleware/errors";
 
 export function createApp() {
@@ -14,6 +16,8 @@ export function createApp() {
 
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
   app.use("/api/auth", authRouter);
+  app.use("/api/books", booksRouter);
+  app.use("/api/orders", ordersRouter);
 
   app.use(notFound);
   app.use(errorHandler);
