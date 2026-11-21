@@ -1,36 +1,50 @@
 ﻿import dns from "dns";
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 import "dotenv/config";
-import express from "express";
 import http from "http";
-import cors from "cors";
-import helmet from "helmet";
 import mongoose from "mongoose";
 import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
+import { createApp } from "./app";
+import { seedAdmin } from "./services/seedAdmin";
 
 const PORT = Number(process.env.PORT) || 4000;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:3000";
 
-const app = express();
-app.use(helmet());
-app.use(cors({ origin: CLIENT_ORIGIN }));
-app.use(express.json());
-
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
-
+const app = createApp();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: CLIENT_ORIGIN } });
-io.on("connection", (socket) => console.log("socket conectado", socket.id));
+const io = new Server(server, { cors: { origin: CLIENT_ORIGIN, credentials: true } });
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) return next(new Error("Token requerido"));
+  if (!process.env.JWT_SECRET) return next(new Error("Configuración JWT incompleta"));
+  try {
+    jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch {
+    next(new Error("Token inválido"));
+  }
+});
+
+io.on("connection", (socket) => {
+  console.log("socket autenticado conectado", socket.id);
+});
 
 async function main() {
   if (!process.env.MONGODB_URI) throw new Error("Falta MONGODB_URI");
+  if (!process.env.JWT_SECRET) throw new Error("Falta JWT_SECRET");
+
   await mongoose.connect(process.env.MONGODB_URI);
   console.log("MongoDB conectado");
+  await seedAdmin();
+  console.log("Seed de administrador verificado");
+
   server.listen(PORT, "0.0.0.0", () => console.log(`API en puerto ${PORT}`));
 }
 
-main().catch((e) => {
-  console.error("Error al iniciar:", e.message);
+main().catch((error) => {
+  console.error("Error al iniciar:", error instanceof Error ? error.message : error);
   process.exit(1);
 });
 
