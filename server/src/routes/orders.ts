@@ -23,6 +23,39 @@ ordersRouter.post("/", async (req, res, next) => {
   }
 });
 
+ordersRouter.get("/", authenticate, authorize("admin"), async (req, res, next) => {
+  try {
+    const input = z.object({
+      shippingStatus: z.enum(["Pendiente", "Procesando", "Enviado", "Entregado"]).optional()
+    }).strict().parse(req.query);
+
+    const filter: Record<string, unknown> = {};
+    if (input.shippingStatus) filter.shippingStatus = input.shippingStatus;
+
+    const orders = await Order.find(filter)
+      .sort({ createdAt: -1 })
+      .select("_id user items.titleSnapshot items.quantity total paymentStatus shippingStatus trackingNumber createdAt paidAt updatedAt")
+      .lean();
+
+    res.json({
+      orders: orders.map((order) => ({
+        id: String(order._id),
+        user: String(order.user),
+        items: order.items.map((item) => ({ title: item.titleSnapshot, quantity: item.quantity })),
+        total: order.total,
+        paymentStatus: order.paymentStatus,
+        shippingStatus: order.shippingStatus,
+        trackingNumber: order.trackingNumber || "",
+        createdAt: order.createdAt,
+        paidAt: order.paidAt || null,
+        updatedAt: order.updatedAt
+      }))
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 ordersRouter.patch("/:id/status", authorize("admin"), async (req, res, next) => {
   try {
     const input = z.object({
